@@ -90,7 +90,7 @@ BEGIN
 	
 	SET @JourneeDeLaSemaineDansAnnee = DATEPART(WW,@JourneeEnCour)
 
-	INSERT INTO Entrepot.dbo.Dates
+	INSERT INTO [dbo].[Dates]
 	SELECT
 	
 	CASE
@@ -220,12 +220,12 @@ BEGIN
 	SELECT @NomProduit = min(ProductName) from Northwind.dbo.Products
 	WHERE Northwind.dbo.Products.ProductID = @ProductID;
 
-	SELECT @NomFournisseur = min(CategoryName) from Northwind.dbo.Categories
+	SELECT @Categorie = min(CategoryName) from Northwind.dbo.Categories
 	JOIN Northwind.dbo.Products
 	ON Northwind.dbo.Categories.CategoryID = Northwind.dbo.Products.CategoryID
 	WHERE Northwind.dbo.Products.ProductID = @ProductID;
 
-	SELECT @Categorie = min(CompanyName) from Northwind.dbo.Suppliers
+	SELECT @NomFournisseur = min(CompanyName) from Northwind.dbo.Suppliers
 	JOIN Northwind.dbo.Products
 	ON Northwind.dbo.Suppliers.SupplierID = Northwind.dbo.Products.SupplierID
 	WHERE Northwind.dbo.Products.ProductID = @ProductID;
@@ -240,11 +240,11 @@ BEGIN
 	INSERT INTO [dbo].[Produit]
 	SELECT
 		@NomProduit AS NomProduit,
-		@Categorie AS Categorie,
 		@NomFournisseur AS NomFournisseur,
 		NULL AS AncienFournniseur1,
 		NULL AS AncienFournniseur2,
 		NULL AS AncienFournniseur3,
+		@Categorie AS Categorie,
 		@PaysFournisseur AS PaysFournisseur,
 		
 		CASE 
@@ -330,12 +330,12 @@ NomContact varchar(80),
 NomVille varchar(80),
 NomPays varchar(80),
 Continent varchar(80),
-ReferenceClientId int,
+ReferenceClientId int CONSTRAINT fk_ClientClient FOREIGN KEY(ClientId) REFERENCES Client(ClientId),
 DateModification datetime
 )
 GO
 
-CREATE PROCEDURE obtenirContinent @NomPays varchar(40),
+CREATE PROCEDURE obtenirContinent @NomPays varchar(80),
 @Continent varchar(80) OUTPUT
 AS
 DECLARE @TSQL varchar(8000)
@@ -347,11 +347,9 @@ BEGIN
 	SELECT  @TSQL = 'INSERT INTO #TEST SELECT Continent FROM OPENQUERY(ORACLE,''SELECT * FROM SYSTEM.CORRPAYSCONT WHERE COUNTRY = ''''' + @NomPays + ''''''')'
 	EXEC (@TSQL)
 END
-
-SELECT @Continent = Continent from #test
 GO
 
-CREATE PROCEDURE remplirClient AS 
+CREATE PROCEDURE dbo.remplirClient AS 
 DECLARE @ClientId nchar(5);
 DECLARE @NomContact varchar(80)
 DECLARE @NomVille varchar(80)
@@ -393,7 +391,7 @@ BEGIN
 			ELSE 'Aucun'
 		END AS NomPays,
 		
-		@Continent AS Continent, 
+		@Continent AS Continent,
 		NULL AS ReferenceClientId,
 		NULL AS DateModification
 		
