@@ -95,9 +95,18 @@ BEGIN
 			WHERE AnneeFinanciere = @AnneeFinance AND
 			RangJourDansAnnee = @RangJourAnnee
 			
-			SELECT @FaitId = (FaitsId) FROM Entrepot.dbo.Faits WHERE EmployeId = @EmployeId AND ClientId = @ClientId
+			IF (SELECT FaitsId FROM Entrepot.dbo.Faits WHERE EmployeId = @EmployeId AND ClientId = @ClientId
 			and ProduitId = @ProduitId and DateId = @DateId and PrixVente = @PrixVente
-			and QuantiteVendu = @QuantiteVendu
+			and QuantiteVendu = @QuantiteVendu) IS NULL
+				BEGIN
+					SET @FaitId = null;
+				END
+			ELSE
+				BEGIN
+					SELECT @FaitId = (FaitsId) FROM Entrepot.dbo.Faits WHERE EmployeId = @EmployeId AND ClientId = @ClientId
+					and ProduitId = @ProduitId and DateId = @DateId and PrixVente = @PrixVente
+					and QuantiteVendu = @QuantiteVendu
+				END
 			
 			IF @FaitId IS NULL AND @EmployeId IS NOT NULL AND @ClientId IS NOT NULL AND @ProduitId IS NOT NULL
 			AND @DateId IS NOT NULL AND @PrixVente IS NOT NULL
@@ -145,7 +154,7 @@ BEGIN
 		
 		SELECT @NomVille = City from Northwind.dbo.Customers
 		WHERE Northwind.dbo.Customers.CustomerID = @ClientId
-
+	
 		SELECT @NomPays = Country from Northwind.dbo.Customers
 		WHERE Northwind.dbo.Customers.CustomerID = @ClientId
 		
@@ -161,14 +170,6 @@ BEGIN
 			BEGIN
 				SELECT @IdClientEntrepot = (ClientId) FROM Entrepot.dbo.Client
 				WHERE NomContact = @NomContact and NomPays = @NomPays and Continent IS NULL
-			END
-			
-			IF @IdClientEntrepot = 38
-			BEGIN
-				PRINT @NomContact
-				PRINT @NomPays
-				PRINT @NomVille
-				PRINT @Continent
 			END
 
 		IF @IdClientEntrepot IS NULL
@@ -203,7 +204,6 @@ BEGIN
 					Continent IS NULL
 				END
 				
-			
 			IF @NomVilleClient IS NOT NULL AND @NomVilleClient != @NomVille COLLATE French_CI_AS
 			BEGIN
 				SET @DateModification = GETDATE()
@@ -286,9 +286,7 @@ BEGIN
 		WHERE Northwind.dbo.Products.ProductID = @ProductID;
 		
 		SELECT @IdProduitEntrepot = (ProduitId) FROM Entrepot.dbo.Produit
-		WHERE Categorie = @Categorie
-		and PaysFournisseur = @PaysFournisseur
-		and NomProduit = @NomProduit
+		WHERE Categorie = @Categorie and NomProduit = @NomProduit
 		
 		IF @IdProduitEntrepot IS NULL
 		BEGIN
@@ -315,24 +313,36 @@ BEGIN
 		ELSE
 		BEGIN
 			SELECT @NomFournisseurProduit  = (NomFournisseur) from Entrepot.dbo.Produit
-			WHERE Categorie = @Categorie and PaysFournisseur = @PaysFournisseur and NomProduit = @NomProduit
+			WHERE Categorie = @Categorie  and NomProduit = @NomProduit
+			
 			IF @NomFournisseurProduit != @NomFournisseur
-			BEGIN
-				SELECT @AncienFournisseur1 = (AncienFournisseur1) from Entrepot.dbo.Produit
-				WHERE ProduitId = @IdProduitEntrepot
-				
-				SELECT @AncienFournisseur2 = (AncienFournisseur2) from Entrepot.dbo.Produit
-				WHERE ProduitId = @IdProduitEntrepot
-				
-				UPDATE Entrepot.dbo.Produit
-				SET NomFournisseur = @NomFournisseur, AncienFournisseur1 = @NomFournisseurProduit,
-				AncienFournisseur2 = @AncienFournisseur1, AncienFournisseur3 = @AncienFournisseur2
-				WHERE ProduitId = @IdProduitEntrepot
-			END
+				BEGIN
+					SELECT @AncienFournisseur1 = (AncienFournisseur1) from Entrepot.dbo.Produit
+					WHERE ProduitId = @IdProduitEntrepot
+					
+					SELECT @AncienFournisseur2 = (AncienFournisseur2) from Entrepot.dbo.Produit
+					WHERE ProduitId = @IdProduitEntrepot
+					
+					UPDATE Entrepot.dbo.Produit
+					SET NomFournisseur = @NomFournisseur, AncienFournisseur1 = @NomFournisseurProduit,
+					AncienFournisseur2 = @AncienFournisseur1, AncienFournisseur3 = @AncienFournisseur2, 
+					PaysFournisseur = @PaysFournisseur
+					WHERE ProduitId = @IdProduitEntrepot
+				END
 		END
 			
 		SELECT @ProductID = min(ProductID) from Northwind.dbo.Products
 		WHERE ProductID > @ProductID
+		
+		SET @IdProduitEntrepot = null;
+		SET @NomProduit = null;
+		SET @Categorie = null;
+		SET @NomFournisseur = null;
+		SET @PaysFournisseur = null;
+		SET @SystemeMesure = null;
+		SET @NomFournisseurProduit = null;
+		SET @AncienFournisseur1 = null;
+		SET @AncienFournisseur2 = null;
 	END
 END
 GO
