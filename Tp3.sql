@@ -4,7 +4,7 @@ GO
 IF DB_ID('Entrepot') IS NULL
 	CREATE DATABASE Entrepot;
 GO
-
+ 
 USE Entrepot
 GO
 
@@ -142,7 +142,7 @@ BEGIN
 	BEGIN
 		SELECT @NomContact = ContactName from Northwind.dbo.Customers
 		WHERE Northwind.dbo.Customers.CustomerID = @ClientId
-
+		
 		SELECT @NomVille = City from Northwind.dbo.Customers
 		WHERE Northwind.dbo.Customers.CustomerID = @ClientId
 
@@ -150,75 +150,96 @@ BEGIN
 		WHERE Northwind.dbo.Customers.CustomerID = @ClientId
 		
 		SELECT @Continent = (Continent) from Entrepot.dbo.Continent
-		WHERE Pays = @NomPays
+		WHERE Pays = @NomPays COLLATE French_CI_AS
 		
-		SELECT @IdClientEntrepot = (ClientId) FROM Entrepot.dbo.Client
-		WHERE NomContact = @NomContact and NomPays = @NomPays and
-		Continent = @Continent 
-		
+		IF @Continent IS NOT NULL
+			BEGIN
+				SELECT @IdClientEntrepot = (ClientId) FROM Entrepot.dbo.Client
+				WHERE NomContact = @NomContact and NomPays = @NomPays and Continent = @Continent 
+			END
+		ELSE
+			BEGIN
+				SELECT @IdClientEntrepot = (ClientId) FROM Entrepot.dbo.Client
+				WHERE NomContact = @NomContact and NomPays = @NomPays and Continent IS NULL
+			END
+			
+			IF @IdClientEntrepot = 38
+			BEGIN
+				PRINT @NomContact
+				PRINT @NomPays
+				PRINT @NomVille
+				PRINT @Continent
+			END
+
 		IF @IdClientEntrepot IS NULL
 		BEGIN
 			INSERT INTO [dbo].[Client]
 			SELECT
-				CASE
-					WHEN @NomContact IS NOT NULL
-					THEN @NomContact
-					ELSE 'Aucun'
-				END AS NomContact,
+				@NomContact AS NomContact,
 				
-				CASE
-					WHEN @NomVille IS NOT NULL
-					THEN @NomVille
-					ELSE 'Aucun'
-				END AS NomVile,
+				@NomVille AS NomVille,
 				
-				CASE
-					WHEN @NomPays IS NOT NULL
-					THEN @NomPays
-					ELSE 'Aucun'
-				END AS NomPays,
+				@NomPays AS NomPays,
 				
 				@Continent AS Continent,
+
 				NULL AS ReferenceClientId,
 				NULL AS DateModification	
 		END
 		ELSE
 		BEGIN
-			SELECT @NomVilleClient = (NomVille) from Entrepot.dbo.Client
-			WHERE NomContact = @NomContact and NomPays = @NomPays and
-			Continent = @Continent
+			IF @Continent IS NOT NULL
+				BEGIN
+					SELECT @NomVilleClient = (NomVille) from Entrepot.dbo.Client
+					WHERE NomContact = @NomContact COLLATE French_CI_AS and
+					NomPays = @NomPays COLLATE French_CI_AS and
+					Continent = @Continent COLLATE French_CI_AS
+				END 
+			ELSE
+				BEGIN
+					SELECT @NomVilleClient = (NomVille) from Entrepot.dbo.Client
+					WHERE NomContact = @NomContact COLLATE French_CI_AS and
+					NomPays = @NomPays COLLATE French_CI_AS and
+					Continent IS NULL
+				END
+				
 			
-			IF @NomVilleClient IS NOT NULL AND @NomVilleClient != @NomVille
+			IF @NomVilleClient IS NOT NULL AND @NomVilleClient != @NomVille COLLATE French_CI_AS
 			BEGIN
 				SET @DateModification = GETDATE()
+				
+				IF (SELECT ReferenceClientId from Entrepot.dbo.Client
+					WHERE ClientId = @IdClientEntrepot) IS NOT NULL
+				BEGIN
+					SELECT @IdClientEntrepot = ReferenceClientId FROM Entrepot.dbo.Client
+					WHERE ClientId = @IdClientEntrepot;
+				END
+				
 				INSERT INTO [dbo].[Client]
 				SELECT
-					CASE
-						WHEN @NomContact IS NOT NULL
-						THEN @NomContact
-						ELSE 'Aucun'
-					END AS NomContact,
+					@NomContact AS NomContact,
 					
-					CASE
-						WHEN @NomVille IS NOT NULL
-						THEN @NomVille
-						ELSE 'Aucun'
-					END AS NomVile,
+					@NomVille as NomVile,
 					
-					CASE
-						WHEN @NomPays IS NOT NULL
-						THEN @NomPays
-						ELSE 'Aucun'
-					END AS NomPays,
+					@NomPays AS NomPays,
 					
 					@Continent AS Continent,
+					
 					@IdClientEntrepot AS ReferenceClientId,
+					
 					@DateModification AS DateModification	
 			END
 		END
 		
 		SELECT @ClientId = min(CustomerID) FROM Northwind.dbo.Customers
-		WHERE CustomerID > @ClientId
+		WHERE  Northwind.dbo.Customers.CustomerID > @ClientId
+		
+		SET @Continent = NULL;
+		SET @NomContact = NULL;
+		SET @NomPays = NULL;
+		SET @NomVille = NULL;
+		SET @NomVilleClient = NULL;
+		SET @IdClientEntrepot = NULL;
 	END
 END
 GO
@@ -317,5 +338,3 @@ END
 GO
 
 EXEC updateProduit
-
-SELECT * FROM Produit;
